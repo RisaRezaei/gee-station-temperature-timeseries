@@ -6,6 +6,10 @@
 
 Extract **daily 2 m air temperature** (mean, minimum and maximum) for any number of station locations from ERA5-Land, and export it as one clean CSV in °C: one row per station per day. It's useful for filling gaps in station records, driving hydrological models, or comparing stations against reanalysis.
 
+![Daily mean, minimum and maximum temperature at an example station](docs/preview.png)
+
+<sub>Example output: two years of daily ERA5-Land temperature (mean line, min–max band) at one station.</sub>
+
 ## What the script does
 
 1. Loads your stations (an asset, or an inline list).
