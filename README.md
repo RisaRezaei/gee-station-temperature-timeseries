@@ -3,6 +3,7 @@
 [![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-JavaScript-34A853?logo=googleearth&logoColor=white)](https://code.earthengine.google.com)
 [![Data: ERA5-Land](https://img.shields.io/badge/data-ERA5--Land%20daily-1565C0)](https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23646400.svg)](https://doi.org/10.5281/zenodo.23646400)
 
 Extract **daily 2 m air temperature** (mean, minimum and maximum) for any number of station locations from ERA5-Land, and export it as one clean CSV in °C: one row per station per day. It's useful for filling gaps in station records, driving hydrological models, or comparing stations against reanalysis.
 
@@ -60,6 +61,12 @@ wide = df.pivot(index="date", columns="station_id", values="t2m_mean_C")
 ## Data
 
 Muñoz Sabater, J. (2019). ERA5-Land hourly data from 1950 to present. Copernicus Climate Change Service (C3S) Climate Data Store. Earth Engine: [`ECMWF/ERA5_LAND/DAILY_AGGR`](https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR).
+
+## Cite this tool
+
+Abbasalizadehrezaei, P. (2026). *Daily Temperature at Multiple Stations* (Version 1.0.0) [Software]. Zenodo. https://doi.org/10.5281/zenodo.23646400
+
+GitHub also offers a ready-made citation under **Cite this repository** (from [CITATION.cff](CITATION.cff)).
 
 ## Author
 
