@@ -1,155 +1,64 @@
-# Daily Temperature Time Series from Earth Engine for Multiple Locations Extraction
+# Station Temperature Time Series (ERA5-Land)
 
-## Overview
+[![Google Earth Engine](https://img.shields.io/badge/Google%20Earth%20Engine-JavaScript-34A853?logo=googleearth&logoColor=white)](https://code.earthengine.google.com)
+[![Data: ERA5-Land](https://img.shields.io/badge/data-ERA5--Land%20daily-1565C0)](https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-This script processes daily temperature time series using Google Earth Engine. It extracts temperature data from an image collection, averages it over daily intervals, and associates it with specific station locations. The results are formatted into a structured table, merging overlapping observations to retain the maximum value for each day. Finally, the processed data is exported as a CSV file for further analysis.
+Extract **daily 2 m air temperature** (mean, minimum and maximum) for any number of station locations from ERA5-Land, and export it as one clean CSV in °C: one row per station per day. It's useful for filling gaps in station records, driving hydrological models, or comparing stations against reanalysis.
 
----
-## Code Explanation
+## What the script does
 
-### **Step 1: Load Feature Collection**
-Load the feature collection of points from the variable `st`.
-```javascript
-var points = ee.FeatureCollection(st);
+1. Loads your stations (an asset, or an inline list).
+2. Reads the ERA5-Land daily aggregates and converts Kelvin to °C.
+3. Samples every day at every station.
+4. Charts the last two years at the first station as a quick check.
+5. Exports a tidy CSV to Google Drive.
+
+## Quick start
+
+1. Open the [Earth Engine Code Editor](https://code.earthengine.google.com).
+2. Paste [`station_temperature_timeseries.js`](station_temperature_timeseries.js) into a new script.
+3. Set `STATIONS_ASSET` and `ID_FIELD`, or edit the inline `stations` list.
+4. Set `startDate` / `endDate`, press **Run**, then start the export from **Tasks**.
+
+## Configuration
+
+| Parameter | Default | Description |
+|---|---|---|
+| `STATIONS_ASSET` | `null` | Point `FeatureCollection` asset with your stations |
+| `stations` | 2 examples | Inline `{id, lon, lat}` list, used when no asset is given |
+| `ID_FIELD` | `'stationid'` | Station ID property in the asset |
+| `startDate` / `endDate` | 1986-09-23 / 2018-09-23 | Period (end date exclusive); ERA5-Land starts in 1950 |
+| `variables` | mean, min, max | Output column → ERA5-Land band |
+
+## Output
+
+`station_temperature_daily.csv` (long / tidy format)
+
+| station_id | date | t2m_mean_C | t2m_min_C | t2m_max_C |
+|---|---|---|---|---|
+| ST01 | 1986-09-23 | … | … | … |
+
+To get one column per station (wide format), use pandas:
+
+```python
+import pandas as pd
+df = pd.read_csv("station_temperature_daily.csv", parse_dates=["date"])
+wide = df.pivot(index="date", columns="station_id", values="t2m_mean_C")
 ```
 
-### **Step 2: Define a Function to Aggregate Data by a Time Interval**
-`daily_product`: Aggregates an image collection by a given interval.
+## Notes
 
- * Inputs:
+- ERA5-Land has a ~9 km (0.1°) grid, so each station takes the value of the grid cell it falls in.
+- Stations over open water or outside land cells return empty values.
+- Long periods × many stations can make large exports; split the period if a task runs too long.
 
-`collection`: The image collection to be aggregated.
+## Data
 
-`start`: The start date for aggregation.
+Muñoz Sabater, J. (2019). ERA5-Land hourly data from 1950 to present. Copernicus Climate Change Service (C3S) Climate Data Store. Earth Engine: [`ECMWF/ERA5_LAND/DAILY_AGGR`](https://developers.google.com/earth-engine/datasets/catalog/ECMWF_ERA5_LAND_DAILY_AGGR).
 
-`count`: Number of intervals to process.
+## Author
 
-`interval`: Size of the time step.
+**Parisa Abbasalizadehrezaei** · [risarezaei.github.io](https://risarezaei.github.io)
 
-`units`: Time unit (e.g., 'day').
-
- * Output:
- 
- `ImageCollection`: having images averaged over each time interval.
- 
-```javascript
-var daily_product = function(collection, start, count, interval, units) {
-  var sequence = ee.List.sequence(0, ee.Number(count).subtract(1));
-  var origin_date = ee.Date(start);
-  
-  return ee.ImageCollection(sequence.map(function(i) {
-    var start_date = origin_date.advance(ee.Number(interval).multiply(i), units);
-    var end_date = origin_date.advance(ee.Number(interval).multiply(ee.Number(i).add(1)), units);
-    
-    return collection.filterDate(start_date, end_date).mean()
-      .set('system:time_start', start_date.millis())
-      .set('system:time_end', end_date.millis());
-  }));
-};
-
-```
-### **Step 3: Extract Relevant Data from Images**
-* `DATA`: Extracts 'temperature_2m' band and clips it to the region of interest.
- * Preserves metadata properties.
-
-```javascript
-var DATA = function(img) {
-  var bands = img.select('temperature_2m').clip(st);
-  return bands.copyProperties(img, ['system:time_start', 'system:time_end']);
-};
-```
-
-### **Step 4: Filter and Process the Image Collection**
- * Filter images by date and region.
- * Map `DATA` function over the collection.
-
-```javascript
-var Tair = imageCollection
-  .filterDate('1986-09-23', '2018-09-23')
-  .filterBounds(geometry)
-  .map(DATA);
-```
-
-### **Step 5: Generate Daily Temperature Data**
- * Apply `daily_product` to create a daily time series (11690 days).
-```javascript
-var T_daily = daily_product(Tair, '1986-09-23', 11690, 1, 'day');
-var collection = T_daily;
-print(collection);
-```
-
-### **Step 6: Extract Mean Temperature at Station Locations**
- * Map function over the collection to compute mean temperature at each station.
-```javascript
-var triplets = collection.map(function(image) {
-  return image.select('temperature_2m').reduceRegions({
-    collection: points,
-    reducer: ee.Reducer.mean().setOutputs(['temperature_2m']),
-    scale: 11132,
-  }).map(function(feature) {
-    var ii = ee.Date(image.get('system:time_start'));
-    var i = ii.format("YY-MM-dd");
-    return feature.set({'imageID': i});
-  });
-}).flatten();
-```
-
-### **Step 7: Format Data into Station-wise Time Series**
- * `format`: Converts data into a structured table format.
- * Groups by station ID, with temperature values indexed by date.
-```javascript
-var format = function(table, rowId, colId) {
-  var rows = table.distinct(rowId);
-  var joined = ee.Join.saveAll('matches').apply({
-    primary: rows,
-    secondary: table,
-    condition: ee.Filter.equals({ leftField: rowId, rightField: rowId })
-  });
-  
-  return joined.map(function(row) {
-    var values = ee.List(row.get('matches'))
-      .map(function(feature) {
-        feature = ee.Feature(feature);
-        return [feature.get(colId), feature.get('temperature_2m')];
-      });
-    return row.select([rowId]).set(ee.Dictionary(values.flatten()));
-  });
-};
-var sentinelResults = format(triplets, 'stationid', 'imageID');
-print(triplets.first());
-print(sentinelResults.first());
-```
-
-### **Step 8: Merge Overlapping Observations**
- * `merge`: Aggregates temperature values when multiple records exist for a date.
- * Uses maximum temperature value among duplicates.
-```javascript
-var merge = function(table, rowId) {
-  return table.map(function(feature) {
-    var id = feature.get(rowId);
-    var allKeys = feature.toDictionary().keys().remove(rowId);
-    var substrKeys = ee.List(allKeys.map(function(val) {
-      return ee.String(val).slice(0, 8);
-    }));
-    var uniqueKeys = substrKeys.distinct();
-    var pairs = uniqueKeys.map(function(key) {
-      var matches = feature.toDictionary().select(allKeys.filter(ee.Filter.stringContains('item', key))).values();
-      var val = matches.reduce(ee.Reducer.max());
-      return [key, val];
-    });
-    return feature.select([rowId]).set(ee.Dictionary(pairs.flatten()));
-  });
-};
-var sentinelMerged = merge(sentinelResults, 'stationid');
-```
-### **Step 9: Export the Processed Data to Google Drive**
- * Saves data in CSV format under the 'earthengine' folder.
-```javascript
-Export.table.toDrive({
-  collection: sentinelMerged,
-  description: 'Multiple_Locations_T_time_series',
-  folder: 'earthengine',
-  fileNamePrefix: 'T_time_series_multiple',
-  fileFormat: 'CSV'
-});
-```
+Released under the [MIT License](LICENSE).
