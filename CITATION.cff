@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Daily Temperature at Multiple Stations"
+abstract: "Google Earth Engine script that extracts daily mean, minimum and maximum 2 m air temperature from ERA5-Land at many stations into one tidy CSV in degrees Celsius."
+type: software
+authors:
+  - family-names: Abbasalizadehrezaei
+    given-names: Parisa
+    orcid: "https://orcid.org/0009-0009-5708-7673"
+repository-code: "https://github.com/RisaRezaei/gee-station-temperature-timeseries"
+url: "https://risarezaei.github.io/tool.html?r=gee-station-temperature-timeseries"
+license: MIT
+version: 1.0.0
+date-released: "2026-10-25"
